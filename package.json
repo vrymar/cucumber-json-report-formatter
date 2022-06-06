@@ -1,0 +1,50 @@
+{
+  "name": "cucumber-json-report-formatter",
+  "version": "0.0.4",
+  "description": "Cucumber report formatter for @badeball/cypress-cucumber-preprocessor report",
+  "license": "MIT",
+  "author": "Vitalii Rymar",
+  "main": "./lib/index.js",
+  "engines": {
+    "node": ">=14.16"
+  },
+  "keywords": [
+    "cucumber",
+    "formatter",
+    "report",
+    "bdd",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vitalizzzer/cucumber-json-report-formatter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Vitalizzzer/cucumber-json-report-formatter/issues"
+  },
+  "homepage": "https://github.com/Vitalizzzer/cucumber-json-report-formatter/#readme", 
+  "scripts": {
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run eslint",
+    "build": "tsc",
+    "eslint": "eslint ./src"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "dependencies": {
+    "jsonschema": "^1.4.1",
+    "fs": "^0.0.1-security"
+  },
+  "devDependencies": {
+    "@types/archiver": "^5.3.1",
+    "@types/node": "^17.0.29",
+    "@typescript-eslint/eslint-plugin": "^5.22.0",
+    "@typescript-eslint/parser": "^5.22.0",
+    "eslint": "^8.14.0",
+    "eslint-plugin-react": "^7.29.4",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.3",
+    "vrsource-tslint-rules": "^6.0.0"
+  }
+}

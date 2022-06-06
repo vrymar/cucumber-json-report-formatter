@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "outDir": "lib",
+    "declaration": true,
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "strict": true,
+    "target": "es2020",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": [
+			"es2020"
+		],
+    "jsx": "react",
+    "pretty": true,
+    "stripInternal": true,
+		"newLine": "lf",
+    "skipLibCheck": true
+  },
+  "include": [
+    "./src/**/*.ts",
+    "./src/**/*.json"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
