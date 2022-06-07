@@ -197,7 +197,7 @@ export class Formatter {
             return
         }
 
-        const tags: string [] = []
+        const tags: any [] = []
         let tagsParsed: any
         try {
             const tagsString = JSON.stringify(tagsJson)
@@ -206,7 +206,10 @@ export class Formatter {
             console.error("Error parsing JSON string:", err);
         }
         tagsParsed.forEach(tag => {
-            tags.push(tag.name)
+            const tagJson = { 
+                name: tag.name
+            }
+            tags.push(tagJson)
         })
         return tags
     }
