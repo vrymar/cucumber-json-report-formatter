@@ -128,7 +128,7 @@ export class Formatter {
     public getTestStepFinishedResult(testStepFinishedJson, pickleStepId){
         let status = ""
         let error_message = null
-        const duration = 0
+        let duration = 0
         let parsed: any
         testStepFinishedJson.forEach(stepFinished => {
             if (JSON.stringify(stepFinished).includes(pickleStepId)){
@@ -137,7 +137,7 @@ export class Formatter {
                 } catch (err) {
                     console.error("Error parsing JSON string:", err);
                 }
-                let duration = parsed.testStepFinished.testStepResult.duration
+                duration = parsed.testStepFinished.testStepResult.duration
                 if (typeof duration !== "undefined"){
                     duration = parsed.testStepFinished.testStepResult.duration.seconds
                 }
