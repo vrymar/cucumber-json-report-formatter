@@ -1,9 +1,7 @@
 import { Helper } from './helper'
 import jsonschema from 'jsonschema'
 import assert from 'assert'
-import path from 'path'
 
-//await parseCucumberJson(sourceFile, outputFile)
 
 export class Formatter {
 
@@ -17,7 +15,7 @@ export class Formatter {
         try{
             gherkinDocument = JSON.parse(gherkinDocumentJson[0]).gherkinDocument
         } catch (err) {
-            console.error("Error parsing JSON string.", err);
+            console.error("Error parsing JSON string.", err)
         }
         const feature = gherkinDocument.feature
         const scenarios = feature.children
@@ -55,7 +53,7 @@ export class Formatter {
             }
 
             scenariosJson.push(scenario)
-        });
+        })
 
         const rootJson = {
             comments: this.getComments(gherkinDocument.comments),
@@ -72,14 +70,14 @@ export class Formatter {
         cucumberReport.push(rootJson)
         await this.validateReportSchema(report)
         const reportString = JSON.stringify(cucumberReport)
-        console.info(`Parsed Cucumber JSON report: ${reportString}`)  
+        console.info(`Finished formatting file '${sourceFile}'`)  
         this.helper.writeFile(outputFile, reportString)
     }
 
 
-    public getStepResult(stepId, report){
+    getStepResult(stepId, report){
         if (typeof report === "undefined"){
-            console.error("Source report is undefined");
+            console.error("Source report is undefined")
             return
         }
         const pickleJson = this.helper.getJsonFromArray(report, "pickle")
@@ -89,9 +87,9 @@ export class Formatter {
         return result
     }
 
-    public matchStepDefinitions(stepId, report){
+    matchStepDefinitions(stepId, report){
         if (typeof report === "undefined"){
-            console.error("Source report is undefined");
+            console.error("Source report is undefined")
             return
         }
         const pickleJson = this.helper.getJsonFromArray(report, "pickle")
@@ -104,7 +102,7 @@ export class Formatter {
     }
 
 
-    public getPickleStepIdByStepId(pickleJson, stepId){
+    getPickleStepIdByStepId(pickleJson, stepId){
         let pickleStepId = ""
         let parsed: any
         pickleJson.forEach(element => {
@@ -112,7 +110,7 @@ export class Formatter {
                 try {
                     parsed = JSON.parse(element)
                 } catch (err) {
-                    console.error("Error parsing JSON string:", err);
+                    console.error("Error parsing JSON string:", err)
                 }
                 const pickleSteps = parsed.pickle.steps
                 pickleSteps.forEach(step => {
@@ -125,7 +123,7 @@ export class Formatter {
         return pickleStepId
     }
 
-    public getTestStepFinishedResult(testStepFinishedJson, pickleStepId){
+    getTestStepFinishedResult(testStepFinishedJson, pickleStepId){
         let status = ""
         let error_message = null
         let duration = 0
@@ -135,7 +133,7 @@ export class Formatter {
                 try {
                     parsed = JSON.parse(stepFinished)
                 } catch (err) {
-                    console.error("Error parsing JSON string:", err);
+                    console.error("Error parsing JSON string:", err)
                 }
                 duration = parsed.testStepFinished.testStepResult.duration
                 if (typeof duration !== "undefined"){
@@ -153,7 +151,7 @@ export class Formatter {
         }
     }
 
-    public getStepDefinitionId(testCaseJson, pickleStepId){
+    getStepDefinitionId(testCaseJson, pickleStepId){
         let stepDefinitionId = ""
         let parsed: any
         testCaseJson.forEach(testCase => {
@@ -161,7 +159,7 @@ export class Formatter {
                 try {
                     parsed = JSON.parse(testCase)
                 } catch (err) {
-                    console.error("Error parsing JSON string:", err);
+                    console.error("Error parsing JSON string:", err)
                 }
                 const testSteps = parsed.testCase.testSteps
 
@@ -175,7 +173,7 @@ export class Formatter {
         return stepDefinitionId
     }
 
-    public getMatchedStepDefinition(stepDefinitionJson, stepDefinitionId){
+    getMatchedStepDefinition(stepDefinitionJson, stepDefinitionId){
         let uri = ""
         let line = 0
         let parsed: any
@@ -184,7 +182,7 @@ export class Formatter {
                 try {
                     parsed = JSON.parse(stepDef)
                 } catch (err) {
-                    console.error("Error parsing JSON string:", err);
+                    console.error("Error parsing JSON string:", err)
                 }
                 uri =  parsed.stepDefinition.sourceReference.uri
                 line = parsed.stepDefinition.sourceReference.location.line
@@ -197,7 +195,7 @@ export class Formatter {
 
     getStepAttachments(stepId, report){
         if (typeof report === undefined){
-            console.error("Source report is undefined");
+            console.error("Source report is undefined")
             return
         }
 
@@ -205,30 +203,30 @@ export class Formatter {
         const attachmentsJson = this.helper.getJsonFromArray(report, "attachment")
         const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId)
         const attachments = this.getAttachments(attachmentsJson, pickleStepId)
-        return attachments;
+        return attachments
     }
     getAttachments(attachmentsJson, pickleStepId){       
-        let parsedJson: any;
-        let attachments: Array<object> = [];
+        let parsedJson: any
+        let attachments: Array<object> = []
         attachmentsJson.forEach(attachment => {
             if (JSON.stringify(attachment).includes(pickleStepId)){
                 try {
                     parsedJson = JSON.parse(attachment)
                 } catch (err) {
-                    console.error("Error parsing JSON string:", err);
+                    console.error("Error parsing JSON string:", err)
                 }
                 let newAttachment = {
                     data: parsedJson.attachment.body,
                     mime_type: parsedJson.attachment.mediaType,
                     contentEncoding: parsedJson.attachment.contentEncoding
-                };
-                attachments.push(newAttachment);
+                }
+                attachments.push(newAttachment)
             }
         })
-        return attachments;
+        return attachments
     }
 
-    public getTags(tagsJson){
+    getTags(tagsJson){
         if (typeof tagsJson === "undefined"){
             return
         }
@@ -239,7 +237,7 @@ export class Formatter {
             const tagsString = JSON.stringify(tagsJson)
             tagsParsed = JSON.parse(tagsString)
         } catch (err) {
-            console.error("Error parsing JSON string:", err);
+            console.error("Error parsing JSON string:", err)
         }
         tagsParsed.forEach(tag => {
             const tagJson = { 
@@ -250,7 +248,7 @@ export class Formatter {
         return tags
     }
 
-    public getComments(commentsJson){
+    getComments(commentsJson){
         if (typeof commentsJson === "undefined"){
             return
         }
@@ -261,7 +259,7 @@ export class Formatter {
             const commentsString = JSON.stringify(commentsJson)
             commentsParsed = JSON.parse(commentsString)
         } catch (err) {
-            console.error("Error parsing JSON string:", err);
+            console.error("Error parsing JSON string:", err)
         }
         commentsParsed.forEach(commentItem => {
             const comment = {
@@ -273,20 +271,20 @@ export class Formatter {
         return comments
     }
 
-    public async validateReportSchema(reportJson){
+    async validateReportSchema(reportJson){
         console.info("Start cucumber report JSON schema validation...")
-        const schemaPath = `${__dirname}/model/cucumber_report_schema.json`;
-        console.info(`JSON schema path: ${schemaPath}`);
+        const schemaPath = `${__dirname}/model/cucumber_report_schema.json`
+        console.info(`JSON schema path: ${schemaPath}`)
         const schema = await this.helper.readFileIntoJson(schemaPath)
         let parsedSchema: any
         try {
             const schemaString = JSON.stringify(schema)           
             parsedSchema = JSON.parse(schemaString)
         } catch (err) {
-            console.error("Error parsing JSON string:", err);
+            console.error("Error parsing JSON string:", err)
         }
 
-        const validator = new jsonschema.Validator();
+        const validator = new jsonschema.Validator()
         const result = validator.validate(reportJson, parsedSchema)
         assert.ok(result, `JSON schama validation failed for report: ${reportJson}`)
         console.info("Cucumber report JSON schema validation passed!")    

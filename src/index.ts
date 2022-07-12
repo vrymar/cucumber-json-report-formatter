@@ -1,1 +1,1 @@
-export { Formatter } from './formatter.js';
+export { Formatter } from './formatter.js'

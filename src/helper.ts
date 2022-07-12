@@ -8,7 +8,7 @@ export class Helper {
         const readLine = readline.createInterface({
             input: fileStream,
             crlfDelay: Infinity
-        });
+        })
 
         for await (const line of readLine) {
             result.push(await this.parseJson(line))         
@@ -19,9 +19,9 @@ export class Helper {
     public writeFile(filePath, content){
         try {
             console.info(`Write to the file: ${filePath}`)
-            fs.writeFileSync(filePath, content, {flag: 'w+'});
+            fs.writeFileSync(filePath, content, {flag: 'w+'})
         } catch (err) {
-            console.error(`Failed to write the file: ${filePath}`);
+            console.error(`Failed to write the file: ${filePath}`)
         }
     }
 
@@ -30,7 +30,7 @@ export class Helper {
             const jsonString = JSON.stringify(data)
             return JSON.parse(jsonString)          
         } catch (err) {
-            console.error("Error parsing JSON string:", err);
+            console.error("Error parsing JSON string:", err)
         }        
     }
 
@@ -41,7 +41,6 @@ export class Helper {
                 foundJson.push(json)
             }
         })
-        console.debug(`Found JSON by content '${startWord}': ${foundJson}`)
         return foundJson
     }
 }
