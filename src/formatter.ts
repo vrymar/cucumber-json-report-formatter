@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Helper } from './helper'
 import jsonschema from 'jsonschema'
 import assert from 'assert'
@@ -207,7 +208,7 @@ export class Formatter {
     }
     getAttachments(attachmentsJson, pickleStepId){       
         let parsedJson: any
-        let attachments: Array<object> = []
+        const attachments: Array<object> = []
         attachmentsJson.forEach(attachment => {
             if (JSON.stringify(attachment).includes(pickleStepId)){
                 try {
@@ -215,7 +216,7 @@ export class Formatter {
                 } catch (err) {
                     console.error("Error parsing JSON string:", err)
                 }
-                let newAttachment = {
+                const newAttachment = {
                     data: parsedJson.attachment.body,
                     mime_type: parsedJson.attachment.mediaType,
                     contentEncoding: parsedJson.attachment.contentEncoding
