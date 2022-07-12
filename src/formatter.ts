@@ -29,12 +29,15 @@ export class Formatter {
 
             child.scenario.steps.forEach(step => {
                 const result = this.getStepResult(step.id, report)
+                const attachments = this.getStepAttachments(step.id, report)
                 const match = this.matchStepDefinitions(step.id, report)
+                
                 const stepJson = {
                     keyword:  step.keyword,
                     line: step.location.line,
                     name: step.text,
                     result: result,
+                    embeddings: attachments,
                     match: match
                 }
                 steps.push(stepJson)
@@ -190,6 +193,39 @@ export class Formatter {
         return {
             location: `${uri}:${line}`
         }
+    }
+
+    getStepAttachments(stepId, report){
+        if (typeof report === undefined){
+            console.error("Source report is undefined");
+            return
+        }
+
+        const pickleJson = this.helper.getJsonFromArray(report, "pickle")
+        const attachmentsJson = this.helper.getJsonFromArray(report, "attachment")
+        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId)
+        const attachments = this.getAttachments(attachmentsJson, pickleStepId)
+        return attachments;
+    }
+    getAttachments(attachmentsJson, pickleStepId){       
+        let parsedJson: any;
+        let attachments: Array<object> = [];
+        attachmentsJson.forEach(attachment => {
+            if (JSON.stringify(attachment).includes(pickleStepId)){
+                try {
+                    parsedJson = JSON.parse(attachment)
+                } catch (err) {
+                    console.error("Error parsing JSON string:", err);
+                }
+                let newAttachment = {
+                    data: parsedJson.attachment.body,
+                    mime_type: parsedJson.attachment.mediaType,
+                    contentEncoding: parsedJson.attachment.contentEncoding
+                };
+                attachments.push(newAttachment);
+            }
+        })
+        return attachments;
     }
 
     public getTags(tagsJson){
