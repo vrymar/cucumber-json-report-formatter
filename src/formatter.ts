@@ -24,36 +24,26 @@ export class Formatter {
         const cucumberReport: any [] = []
 
         scenarios.forEach(child => {
-            const steps: any[] = []
-
-            child.scenario.steps.forEach(step => {
-                const result = this.getStepResult(step.id, report)
-                const attachments = this.getStepAttachments(step.id, report)
-                const match = this.matchStepDefinitions(step.id, report)
-                
-                const stepJson = {
-                    keyword:  step.keyword,
-                    line: step.location.line,
-                    name: step.text,
-                    result: result,
-                    embeddings: attachments,
-                    match: match
-                }
-                steps.push(stepJson)
-            })
-
-            const scenario = {
-                description: child.scenario.description,
-                id: `${feature.name};${child.scenario.name}`,
-                keyword: child.scenario.keyword,
-                line: child.scenario.location.line,
-                name: child.scenario.name,
-                steps: steps,
-                tags: this.getTags(child.scenario.tags),
-                type: "scenario"
+            const steps: any [] = []
+            let stepJson: any = {}
+            if(child.scenario === undefined)
+            {
+                child.background.steps.forEach(step => {
+                    stepJson = this.createStepJson(step, report);
+                    steps.push(stepJson);                    
+                })
+                const background = this.createScenarioJson(feature, child.background, steps, "background")
+                scenariosJson.push(background);
             }
-
-            scenariosJson.push(scenario)
+            else
+            {
+                child.scenario.steps.forEach(step => {
+                    stepJson = this.createStepJson(step, report);
+                    steps.push(stepJson)
+                })
+                const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
+                scenariosJson.push(scenario);
+            }
         })
 
         const rootJson = {
@@ -75,6 +65,36 @@ export class Formatter {
         this.helper.writeFile(outputFile, reportString)
     }
 
+    createStepJson(step, report)
+    {
+        const result = this.getStepResult(step.id, report);
+        const attachments = this.getStepAttachments(step.id, report);
+        const match = this.matchStepDefinitions(step.id, report);
+        const json = {
+            keyword: step.keyword,
+            line: step.location.line,
+            name: step.text,
+            result: result,
+            embeddings: attachments,
+            match: match
+        };
+        return json;
+    }
+
+    createScenarioJson(feature, scenario, steps, scenarioType)
+    {
+        const json = {
+            description: scenario.description,
+            id: `${feature.name};${scenario.name}`,
+            keyword: scenario.keyword,
+            line: scenario.location.line,
+            name: scenario.name,
+            steps: steps,
+            tags: this.getTags(scenario.tags),
+            type: scenarioType
+        };
+        return json;
+    }
 
     getStepResult(stepId, report){
         if (typeof report === "undefined"){
