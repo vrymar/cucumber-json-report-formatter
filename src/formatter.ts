@@ -71,7 +71,7 @@ export class Formatter {
 
     createStepJson(step, report)
     {
-        const result = this.getStepResult(step.id, report);
+        const result = this.getStepResult(step.id, report);    
         const attachments = this.getStepAttachments(step.id, report);
         const match = this.matchStepDefinitions(step.id, report);
         const json = {
@@ -170,7 +170,7 @@ export class Formatter {
         })
 
         return {
-            status: status,
+            status: status.toLowerCase(),
             duration: duration,
             error_message: error_message
         }
