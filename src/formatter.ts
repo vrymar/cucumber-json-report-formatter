@@ -12,53 +12,57 @@ export class Formatter {
         console.info(`Start formatting file '${sourceFile}' into '${outputFile}'`)
         const report = await this.helper.readFileIntoJson(sourceFile)
         const gherkinDocumentJson = this.helper.getJsonFromArray(report, "gherkinDocument")  
-        let gherkinDocument: any
-        try{
-            gherkinDocument = JSON.parse(gherkinDocumentJson[0]).gherkinDocument
-        } catch (err) {
-            console.error("Error parsing JSON string.", err)
-        }
-        const feature = gherkinDocument.feature
-        const scenarios = feature.children
-        const scenariosJson: any [] = []
         const cucumberReport: any [] = []
 
-        scenarios.forEach(child => {
-            const steps: any [] = []
-            let stepJson: any = {}
-            if(child.scenario === undefined)
-            {
-                child.background.steps.forEach(step => {
-                    stepJson = this.createStepJson(step, report);
-                    steps.push(stepJson);                    
-                })
-                const background = this.createScenarioJson(feature, child.background, steps, "background")
-                scenariosJson.push(background);
+        gherkinDocumentJson.forEach(gherkinJson => {
+            let gherkinDocument: any
+            try{
+                gherkinDocument = JSON.parse(gherkinJson).gherkinDocument
+            } catch (err) {
+                console.error("Error parsing JSON string.", err)
             }
-            else
-            {
-                child.scenario.steps.forEach(step => {
-                    stepJson = this.createStepJson(step, report);
-                    steps.push(stepJson)
-                })
-                const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
-                scenariosJson.push(scenario);
+            const feature = gherkinDocument.feature
+            const scenarios = feature.children
+            const scenariosJson: any [] = []
+    
+            scenarios.forEach(child => {
+                const steps: any [] = []
+                let stepJson: any = {}
+                if(child.scenario === undefined)
+                {
+                    child.background.steps.forEach(step => {
+                        stepJson = this.createStepJson(step, report);
+                        steps.push(stepJson);                    
+                    })
+                    const background = this.createScenarioJson(feature, child.background, steps, "background")
+                    scenariosJson.push(background);
+                }
+                else
+                {
+                    child.scenario.steps.forEach(step => {
+                        stepJson = this.createStepJson(step, report);
+                        steps.push(stepJson)
+                    })
+                    const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
+                    scenariosJson.push(scenario);
+                }
+            })
+    
+            const rootJson = {
+                comments: this.getComments(gherkinDocument.comments),
+                description: gherkinDocument.feature.description,
+                elements: scenariosJson,
+                id: feature.name,
+                keyword: feature.keyword,
+                line: feature.location.line,
+                name: feature.name,
+                uri: gherkinDocument.uri,
+                tags: this.getTags(gherkinDocument.feature.tags)
             }
+    
+            cucumberReport.push(rootJson)
         })
 
-        const rootJson = {
-            comments: this.getComments(gherkinDocument.comments),
-            description: gherkinDocument.feature.description,
-            elements: scenariosJson,
-            id: feature.name,
-            keyword: feature.keyword,
-            line: feature.location.line,
-            name: feature.name,
-            uri: gherkinDocument.uri,
-            tags: this.getTags(gherkinDocument.feature.tags)
-        }
-
-        cucumberReport.push(rootJson)
         await this.validateReportSchema(report)
         const reportString = JSON.stringify(cucumberReport)
         console.info(`Finished formatting file '${sourceFile}'`)  
