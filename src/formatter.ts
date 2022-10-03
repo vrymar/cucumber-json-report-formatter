@@ -26,25 +26,45 @@ export class Formatter {
             const scenariosJson: any [] = []
     
             scenarios.forEach(child => {
-                const steps: any [] = []
-                let stepJson: any = {}
-                if(child.scenario === undefined)
-                {
-                    child.background.steps.forEach(step => {
-                        stepJson = this.createStepJson(step, report);
-                        steps.push(stepJson);                    
-                    })
-                    const background = this.createScenarioJson(feature, child.background, steps, "background")
-                    scenariosJson.push(background);
-                }
-                else
-                {
-                    child.scenario.steps.forEach(step => {
-                        stepJson = this.createStepJson(step, report);
+                let steps: any = []		
+                let stepJson = {};
+                // Background	
+                if(child.scenario === undefined){		
+                    child.background.steps.forEach(step => {		
+                        stepJson = this.createStepJson(step, report, 0)
                         steps.push(stepJson)
                     })
-                    const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
-                    scenariosJson.push(scenario);
+                    const background = this.createScenarioJson(feature, child.background, steps, "background")
+                    scenariosJson.push(background);		
+                }		
+                // Normal Scenario	
+                else if(!child.scenario.keyword.includes("Outline")){		
+                    child.scenario.steps.forEach(step => {		
+                        stepJson = this.createStepJson(step, report, 0)
+                        steps.push(stepJson)
+                    })
+                    const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")		
+                    scenariosJson.push(scenario);		
+                }		
+                // Scenario Outline	
+                else if(child.scenario.examples[0].tableBody !== undefined){		
+                    let numberOfExecutions = child.scenario.examples[0].tableBody.length
+                    let numberOfStepsEachExecution = child.scenario.steps.length
+                    let scenarioIndex = 0
+                    while(scenarioIndex < numberOfExecutions)		
+                    {		
+                        let currentStep = 0
+                        steps = []
+                        while(currentStep < numberOfStepsEachExecution)		
+                        {		
+                            stepJson = this.createStepJson(child.scenario.steps[currentStep], report, scenarioIndex)
+                            currentStep++
+                            steps.push(stepJson)
+                        }		
+                        const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
+                        scenariosJson.push(scenario)
+                        scenarioIndex++	
+                    }		
                 }
             })
     
@@ -69,15 +89,16 @@ export class Formatter {
         this.helper.writeFile(outputFile, reportString)
     }
 
-    createStepJson(step, report)
+    createStepJson(step, report, ignorePickles)
     {
-        const result = this.getStepResult(step.id, report);    
-        const attachments = this.getStepAttachments(step.id, report);
-        const match = this.matchStepDefinitions(step.id, report);
+        const text = this.getStepText(step.id, report, ignorePickles)
+        const result = this.getStepResult(step.id, report, ignorePickles)
+        const attachments = this.getStepAttachments(step.id, report, ignorePickles)
+        const match = this.matchStepDefinitions(step.id, report, ignorePickles)
         const json = {
             keyword: step.keyword,
             line: step.location.line,
-            name: step.text,
+            name: text,
             result: result,
             embeddings: attachments,
             match: match
@@ -100,38 +121,65 @@ export class Formatter {
         return json;
     }
 
-    getStepResult(stepId, report){
-        if (typeof report === "undefined"){
+    getStepText(stepId, report, ignoreAmount){	
+        if (typeof report === undefined) {	
+            console.error("Source report is undefined");	
+            return;	
+        }	
+        const pickleJson = this.helper.getJsonFromArray(report, "pickle");	
+        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId, ignoreAmount);	
+        const text = this.getPickleText(pickleStepId, pickleJson);	
+        return text;	
+    }	
+    getPickleText(pickleStepId, pickleJson)	
+    {	
+        let output;	
+        pickleJson.forEach(json => {	
+            let parsed = JSON.parse(json);	
+            parsed.pickle.steps.forEach(step => {	
+                if(step.id == pickleStepId)	
+                    output = step.text;	
+            })	
+        })	
+        return output;	
+    }	
+
+    
+    getStepResult(stepId, report, ignoreAmount){
+        if (typeof report === undefined){
             console.error("Source report is undefined")
             return
         }
         const pickleJson = this.helper.getJsonFromArray(report, "pickle")
         const testStepFinishedJson = this.helper.getJsonFromArray(report, "testStepFinished")
-        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId)
+        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId, ignoreAmount)
         const result = this.getTestStepFinishedResult(testStepFinishedJson, pickleStepId)
         return result
     }
 
-    matchStepDefinitions(stepId, report){
-        if (typeof report === "undefined"){
+    matchStepDefinitions(stepId, report, ignoreAmount){
+        if (typeof report === undefined){
             console.error("Source report is undefined")
             return
         }
         const pickleJson = this.helper.getJsonFromArray(report, "pickle")
         const testCaseJson = this.helper.getJsonFromArray(report, "testCase")
         const stepDefinitionJson = this.helper.getJsonFromArray(report, "stepDefinition")
-        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId)
+        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId, ignoreAmount)
         const stepDefinitionId = this.getStepDefinitionId(testCaseJson, pickleStepId)
         const match = this.getMatchedStepDefinition(stepDefinitionJson, stepDefinitionId)
         return match
     }
 
 
-    getPickleStepIdByStepId(pickleJson, stepId){
+    getPickleStepIdByStepId(pickleJson, stepId, ignoreAmount){
         let pickleStepId = ""
         let parsed: any
         pickleJson.forEach(element => {
             if (JSON.stringify(element).includes(stepId)){
+                ignoreAmount--;	
+                if(ignoreAmount != -1)	
+                    return;
                 try {
                     parsed = JSON.parse(element)
                 } catch (err) {
@@ -218,7 +266,7 @@ export class Formatter {
         }
     }
 
-    getStepAttachments(stepId, report){
+    getStepAttachments(stepId, report, ignoreAmount){
         if (typeof report === undefined){
             console.error("Source report is undefined")
             return
@@ -226,7 +274,7 @@ export class Formatter {
 
         const pickleJson = this.helper.getJsonFromArray(report, "pickle")
         const attachmentsJson = this.helper.getJsonFromArray(report, "attachment")
-        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId)
+        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId, ignoreAmount)
         const attachments = this.getAttachments(attachmentsJson, pickleStepId)
         return attachments
     }
