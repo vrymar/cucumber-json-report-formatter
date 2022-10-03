@@ -48,8 +48,8 @@ export class Formatter {
                 }		
                 // Scenario Outline	
                 else if(child.scenario.examples[0].tableBody !== undefined){		
-                    let numberOfExecutions = child.scenario.examples[0].tableBody.length
-                    let numberOfStepsEachExecution = child.scenario.steps.length
+                    const numberOfExecutions = child.scenario.examples[0].tableBody.length
+                    const numberOfStepsEachExecution = child.scenario.steps.length
                     let scenarioIndex = 0
                     while(scenarioIndex < numberOfExecutions)		
                     {		
@@ -135,7 +135,7 @@ export class Formatter {
     {	
         let output;	
         pickleJson.forEach(json => {	
-            let parsed = JSON.parse(json);	
+            const parsed = JSON.parse(json);	
             parsed.pickle.steps.forEach(step => {	
                 if(step.id == pickleStepId)	
                     output = step.text;	
