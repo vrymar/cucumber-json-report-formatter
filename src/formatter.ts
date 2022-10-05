@@ -61,7 +61,7 @@ export class Formatter {
                             currentStep++
                             steps.push(stepJson)
                         }		
-                        const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
+                        const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario", scenarioIndex)
                         scenariosJson.push(scenario)
                         scenarioIndex++	
                     }		
@@ -106,14 +106,28 @@ export class Formatter {
         return json;
     }
 
-    createScenarioJson(feature, scenario, steps, scenarioType)
+    createScenarioJson(feature, scenario, steps, scenarioType, scenarioIndex?)
     {
+        let scenarioName = scenario.name;
+        if (scenarioIndex !== undefined && scenarioName.includes('<') && scenarioName.includes('>')) {
+            const examples: any[] = [];
+            const headerCells = scenario.examples[0].tableHeader.cells;
+            const bodyCells = scenario.examples[0].tableBody[scenarioIndex].cells;
+            for (let i = 0; i < headerCells.length; i++) {
+                const k = headerCells[i].value;
+                const v = bodyCells[i].value;
+                examples.push({header: k, value: v});
+            }
+            examples.forEach(example => {
+                scenarioName = scenarioName.replace(`<${example.header}>`, example.value);
+            })
+        }
         const json = {
             description: scenario.description,
-            id: `${feature.name};${scenario.name}`,
+            id: `${feature.name};${scenarioName}`,
             keyword: scenario.keyword,
             line: scenario.location.line,
-            name: scenario.name,
+            name: scenarioName,
             steps: steps,
             tags: this.getTags(scenario.tags),
             type: scenarioType
