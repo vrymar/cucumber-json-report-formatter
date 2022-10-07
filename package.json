@@ -1,6 +1,6 @@
 {
   "name": "cucumber-json-report-formatter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cucumber report formatter for @badeball/cypress-cucumber-preprocessor report",
   "license": "MIT",
   "author": "Vitalii Rymar",
