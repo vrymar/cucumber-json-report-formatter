@@ -24,6 +24,7 @@ export class Formatter {
             const feature = gherkinDocument.feature
             const scenarios = feature.children
             const scenariosJson: any [] = []
+            let background = {}; 
     
             scenarios.forEach(child => {
                 let steps: any = []		
@@ -34,8 +35,7 @@ export class Formatter {
                         stepJson = this.createStepJson(step, report, 0)
                         steps.push(stepJson)
                     })
-                    const background = this.createScenarioJson(feature, child.background, steps, "background")
-                    scenariosJson.push(background);		
+                    background = this.createScenarioJson(feature, child.background, steps, "background")                    	
                 }		
                 // Normal Scenario	
                 else if(!child.scenario.keyword.includes("Outline")){		
@@ -43,7 +43,8 @@ export class Formatter {
                         stepJson = this.createStepJson(step, report, 0)
                         steps.push(stepJson)
                     })
-                    const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")		
+                    const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
+                    scenariosJson.push(background)
                     scenariosJson.push(scenario);		
                 }		
                 // Scenario Outline	
@@ -62,12 +63,13 @@ export class Formatter {
                             steps.push(stepJson)
                         }		
                         const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario", scenarioIndex)
+                        scenariosJson.push(background);	
                         scenariosJson.push(scenario)
                         scenarioIndex++	
                     }		
                 }
             })
-    
+
             const rootJson = {
                 comments: this.getComments(gherkinDocument.comments),
                 description: gherkinDocument.feature.description,
