@@ -24,11 +24,11 @@ export class Formatter {
             const feature = gherkinDocument.feature
             const scenarios = feature.children
             const scenariosJson: any [] = []
-            let background = {}; 
+            let background = {}
     
             scenarios.forEach(child => {
                 let steps: any = []		
-                let stepJson = {};
+                let stepJson = {}
                 // Background	
                 if(child.scenario === undefined){		
                     child.background.steps.forEach(step => {		
@@ -45,7 +45,7 @@ export class Formatter {
                     })
                     const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
                     scenariosJson.push(background)
-                    scenariosJson.push(scenario);		
+                    scenariosJson.push(scenario)
                 }		
                 // Scenario Outline	
                 else if(child.scenario.examples[0].tableBody !== undefined){		
@@ -63,7 +63,7 @@ export class Formatter {
                             steps.push(stepJson)
                         }		
                         const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario", scenarioIndex)
-                        scenariosJson.push(background);	
+                        scenariosJson.push(background)
                         scenariosJson.push(scenario)
                         scenarioIndex++	
                     }		
@@ -104,24 +104,24 @@ export class Formatter {
             result: result,
             embeddings: attachments,
             match: match
-        };
-        return json;
+        }
+        return json
     }
 
     createScenarioJson(feature, scenario, steps, scenarioType, scenarioIndex?)
     {
-        let scenarioName = scenario.name;
+        let scenarioName = scenario.name
         if (scenarioIndex !== undefined && scenarioName.includes('<') && scenarioName.includes('>')) {
-            const examples: any[] = [];
-            const headerCells = scenario.examples[0].tableHeader.cells;
-            const bodyCells = scenario.examples[0].tableBody[scenarioIndex].cells;
+            const examples: any[] = []
+            const headerCells = scenario.examples[0].tableHeader.cells
+            const bodyCells = scenario.examples[0].tableBody[scenarioIndex].cells
             for (let i = 0; i < headerCells.length; i++) {
-                const k = headerCells[i].value;
-                const v = bodyCells[i].value;
-                examples.push({header: k, value: v});
+                const k = headerCells[i].value
+                const v = bodyCells[i].value
+                examples.push({header: k, value: v})
             }
             examples.forEach(example => {
-                scenarioName = scenarioName.replace(`<${example.header}>`, example.value);
+                scenarioName = scenarioName.replace(`<${example.header}>`, example.value)
             })
         }
         const json = {
@@ -133,31 +133,31 @@ export class Formatter {
             steps: steps,
             tags: this.getTags(scenario.tags),
             type: scenarioType
-        };
-        return json;
+        }
+        return json
     }
 
     getStepText(stepId, report, ignoreAmount){	
         if (typeof report === undefined) {	
-            console.error("Source report is undefined");	
-            return;	
+            console.error("Source report is undefined")
+            return
         }	
-        const pickleJson = this.helper.getJsonFromArray(report, "pickle");	
-        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId, ignoreAmount);	
-        const text = this.getPickleText(pickleStepId, pickleJson);	
-        return text;	
+        const pickleJson = this.helper.getJsonFromArray(report, "pickle")
+        const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId, ignoreAmount)
+        const text = this.getPickleText(pickleStepId, pickleJson)
+        return text
     }	
     getPickleText(pickleStepId, pickleJson)	
     {	
-        let output;	
+        let output
         pickleJson.forEach(json => {	
-            const parsed = JSON.parse(json);	
+            const parsed = JSON.parse(json)
             parsed.pickle.steps.forEach(step => {	
                 if(step.id == pickleStepId)	
-                    output = step.text;	
+                    output = step.text
             })	
         })	
-        return output;	
+        return output
     }	
 
     
@@ -193,9 +193,9 @@ export class Formatter {
         let parsed: any
         pickleJson.forEach(element => {
             if (JSON.stringify(element).includes(stepId)){
-                ignoreAmount--;	
+                ignoreAmount--
                 if(ignoreAmount != -1)	
-                    return;
+                    return
                 try {
                     parsed = JSON.parse(element)
                 } catch (err) {
@@ -226,7 +226,7 @@ export class Formatter {
                 }
                 duration = parsed.testStepFinished.testStepResult.duration
                 if (typeof duration !== "undefined"){
-                    duration = parsed.testStepFinished.testStepResult.duration.seconds
+                    duration = this.convertTotalRunDurationToNanos(duration)
                 }
                 status = parsed.testStepFinished.testStepResult.status            
                 error_message = parsed.testStepFinished.testStepResult.message
@@ -238,6 +238,14 @@ export class Formatter {
             duration: duration,
             error_message: error_message
         }
+    }
+
+    convertTotalRunDurationToNanos(duration){
+        const testStepFinishedSec = duration.seconds        
+        const testStepFinishedNanos = duration.nanos                       
+        const durationNanos = testStepFinishedSec * 1000000000
+        const totalDuration = durationNanos + testStepFinishedNanos
+        return totalDuration
     }
 
     getStepDefinitionId(testCaseJson, pickleStepId){
