@@ -44,7 +44,9 @@ export class Formatter {
                         steps.push(stepJson)
                     })
                     const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
-                    scenariosJson.push(background)
+                    if (Object.keys(background).length !== 0 && background !== undefined) {                             
+                        scenariosJson.push(background);
+                    } 
                     scenariosJson.push(scenario)
                 }		
                 // Scenario Outline	
@@ -63,7 +65,9 @@ export class Formatter {
                             steps.push(stepJson)
                         }		
                         const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario", scenarioIndex)
-                        scenariosJson.push(background)
+                        if (Object.keys(background).length !== 0 && background !== undefined) {                                   
+                            scenariosJson.push(background);
+                        } 
                         scenariosJson.push(scenario)
                         scenarioIndex++	
                     }		
