@@ -6,12 +6,12 @@ import assert from 'assert'
 
 export class Formatter {
 
-    helper = new Helper()    
+    helper = new Helper()
 
     public async parseCucumberJson(sourceFile: string, outputFile: string) {
         console.info(`Start formatting file '${sourceFile}' into '${outputFile}'`)
         const report = await this.helper.readFileIntoJson(sourceFile)
-        const gherkinDocumentJson = this.helper.getJsonFromArray(report, "gherkinDocument")  
+        const gherkinDocumentJson = this.helper.getJsonFromArray(report, "gherkinDocument")
         const cucumberReport: any [] = []
 
         gherkinDocumentJson.forEach(gherkinJson => {
@@ -22,57 +22,19 @@ export class Formatter {
                 console.error("Error parsing JSON string.", err)
             }
             const feature = gherkinDocument.feature
-            const scenarios = feature.children
+            const featureChildren = feature.children
             const scenariosJson: any [] = []
-            let background = {}
-    
-            scenarios.forEach(child => {
-                let steps: any = []		
-                let stepJson = {}
-                // Background	
-                if(child.scenario === undefined){		
-                    child.background.steps.forEach(step => {		
-                        stepJson = this.createStepJson(step, report, 0)
-                        steps.push(stepJson)
-                    })
-                    background = this.createScenarioJson(feature, child.background, steps, "background")                    	
-                }		
-                // Normal Scenario	
-                else if(!child.scenario.keyword.includes("Outline")){		
-                    child.scenario.steps.forEach(step => {		
-                        stepJson = this.createStepJson(step, report, 0)
-                        steps.push(stepJson)
-                    })
-                    const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario")
-                    if (Object.keys(background).length !== 0 && background !== undefined) {                             
-                        scenariosJson.push(background);
-                    } 
-                    scenariosJson.push(scenario)
-                }		
-                // Scenario Outline	
-                else if(child.scenario.examples[0].tableBody !== undefined){		
-                    const numberOfExecutions = child.scenario.examples[0].tableBody.length
-                    const numberOfStepsEachExecution = child.scenario.steps.length
-                    let scenarioIndex = 0
-                    while(scenarioIndex < numberOfExecutions)		
-                    {		
-                        let currentStep = 0
-                        steps = []
-                        while(currentStep < numberOfStepsEachExecution)		
-                        {		
-                            stepJson = this.createStepJson(child.scenario.steps[currentStep], report, scenarioIndex)
-                            currentStep++
-                            steps.push(stepJson)
-                        }		
-                        const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario", scenarioIndex)
-                        if (Object.keys(background).length !== 0 && background !== undefined) {                                   
-                            scenariosJson.push(background);
-                        } 
-                        scenariosJson.push(scenario)
-                        scenarioIndex++	
-                    }		
+            const background = {}
+            featureChildren.forEach(featureChild => {
+                if (featureChild.rule) {
+                    featureChild.rule.steps = [];
+                    featureChild.rule.children.forEach(ruleChildren => {
+                        this.buildAndAddScenario(ruleChildren, report, background, feature, scenariosJson, featureChild.rule);
+                    });
+                } else {
+                    this.buildAndAddScenario(featureChild, report, background, feature, scenariosJson, undefined);
                 }
-            })
+            });
 
             const rootJson = {
                 comments: this.getComments(gherkinDocument.comments),
@@ -85,14 +47,74 @@ export class Formatter {
                 uri: gherkinDocument.uri,
                 tags: this.getTags(gherkinDocument.feature.tags)
             }
-    
+
             cucumberReport.push(rootJson)
         })
 
         await this.validateReportSchema(report)
         const reportString = JSON.stringify(cucumberReport)
-        console.info(`Finished formatting file '${sourceFile}'`)  
+        console.info(`Finished formatting file '${sourceFile}'`)
         this.helper.writeFile(outputFile, reportString)
+    }
+
+    private buildAndAddScenario(child, report: string[], background: {}, feature, scenariosJson: any[], rule) {
+        let steps = [];
+        let stepJson = {};
+        // Background
+        if (child.scenario === undefined) {
+            child.background.steps.forEach(step => {
+                stepJson = this.createStepJson(step, report, 0);
+                // @ts-ignore
+                steps.push(stepJson);
+            });
+            background = this.createScenarioJson(feature, child.background, steps, "background");
+            // eslint-disable-next-line brace-style
+        }
+        // Normal Scenario
+        else if (!child.scenario.keyword.includes("Outline")) {
+            child.scenario.steps.forEach(step => {
+                stepJson = this.createStepJson(step, report, 0);
+                // @ts-ignore
+                steps.push(stepJson);
+            });
+            const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario");
+            if (rule) {
+                scenario.id = `${feature.name};${rule.name};${scenario.name}`;
+            }
+            if (Object.keys(background).length !== 0 && background !== undefined) {
+                // @ts-ignore
+                scenariosJson.push(background);
+            }
+            // @ts-ignore
+            scenariosJson.push(scenario);
+        }
+        // Scenario Outline
+        else if (child.scenario.examples[0].tableBody !== undefined) {
+            const numberOfExecutions = child.scenario.examples[0].tableBody.length;
+            const numberOfStepsEachExecution = child.scenario.steps.length;
+            let scenarioIndex = 0;
+            while (scenarioIndex < numberOfExecutions) {
+                let currentStep = 0;
+                steps = [];
+                while (currentStep < numberOfStepsEachExecution) {
+                    stepJson = this.createStepJson(child.scenario.steps[currentStep], report, scenarioIndex);
+                    currentStep++;
+                    // @ts-ignore
+                    steps.push(stepJson);
+                }
+                const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario", scenarioIndex);
+                if (rule) {
+                    scenario.id = `${feature.name};${rule.name};${scenario.name}`;
+                }
+                if (Object.keys(background).length !== 0 && background !== undefined) {
+                    // @ts-ignore
+                    scenariosJson.push(background);
+                }
+                // @ts-ignore
+                scenariosJson.push(scenario);
+                scenarioIndex++;
+            }
+        }
     }
 
     createStepJson(step, report, ignorePickles)
@@ -141,30 +163,30 @@ export class Formatter {
         return json
     }
 
-    getStepText(stepId, report, ignoreAmount){	
-        if (typeof report === undefined) {	
+    getStepText(stepId, report, ignoreAmount){
+        if (typeof report === undefined) {
             console.error("Source report is undefined")
             return
-        }	
+        }
         const pickleJson = this.helper.getJsonFromArray(report, "pickle")
         const pickleStepId = this.getPickleStepIdByStepId(pickleJson, stepId, ignoreAmount)
         const text = this.getPickleText(pickleStepId, pickleJson)
         return text
-    }	
-    getPickleText(pickleStepId, pickleJson)	
-    {	
+    }
+    getPickleText(pickleStepId, pickleJson)
+    {
         let output
-        pickleJson.forEach(json => {	
+        pickleJson.forEach(json => {
             const parsed = JSON.parse(json)
-            parsed.pickle.steps.forEach(step => {	
-                if(step.id == pickleStepId)	
+            parsed.pickle.steps.forEach(step => {
+                if(step.id == pickleStepId)
                     output = step.text
-            })	
-        })	
+            })
+        })
         return output
-    }	
+    }
 
-    
+
     getStepResult(stepId, report, ignoreAmount){
         if (typeof report === undefined){
             console.error("Source report is undefined")
@@ -198,7 +220,7 @@ export class Formatter {
         pickleJson.forEach(element => {
             if (JSON.stringify(element).includes(stepId)){
                 ignoreAmount--
-                if(ignoreAmount != -1)	
+                if(ignoreAmount != -1)
                     return
                 try {
                     parsed = JSON.parse(element)
@@ -232,7 +254,7 @@ export class Formatter {
                 if (typeof duration !== "undefined"){
                     duration = this.convertTotalRunDurationToNanos(duration)
                 }
-                status = parsed.testStepFinished.testStepResult.status            
+                status = parsed.testStepFinished.testStepResult.status
                 error_message = parsed.testStepFinished.testStepResult.message
             }
         })
@@ -245,8 +267,8 @@ export class Formatter {
     }
 
     convertTotalRunDurationToNanos(duration){
-        const testStepFinishedSec = duration.seconds        
-        const testStepFinishedNanos = duration.nanos                       
+        const testStepFinishedSec = duration.seconds
+        const testStepFinishedNanos = duration.nanos
         const durationNanos = testStepFinishedSec * 1000000000
         const totalDuration = durationNanos + testStepFinishedNanos
         return totalDuration
@@ -306,7 +328,7 @@ export class Formatter {
         const attachments = this.getAttachments(attachmentsJson, pickleStepId)
         return attachments
     }
-    getAttachments(attachmentsJson, pickleStepId){       
+    getAttachments(attachmentsJson, pickleStepId){
         let parsedJson: any
         const attachments: Array<object> = []
         attachmentsJson.forEach(attachment => {
@@ -341,7 +363,7 @@ export class Formatter {
             console.error("Error parsing JSON string:", err)
         }
         tagsParsed.forEach(tag => {
-            const tagJson = { 
+            const tagJson = {
                 name: tag.name
             }
             tags.push(tagJson)
@@ -379,7 +401,7 @@ export class Formatter {
         const schema = await this.helper.readFileIntoJson(schemaPath)
         let parsedSchema: any
         try {
-            const schemaString = JSON.stringify(schema)           
+            const schemaString = JSON.stringify(schema)
             parsedSchema = JSON.parse(schemaString)
         } catch (err) {
             console.error("Error parsing JSON string:", err)
@@ -388,6 +410,6 @@ export class Formatter {
         const validator = new jsonschema.Validator()
         const result = validator.validate(reportJson, parsedSchema)
         assert.ok(result, `JSON schama validation failed for report: ${reportJson}`)
-        console.info("Cucumber report JSON schema validation passed!")    
+        console.info("Cucumber report JSON schema validation passed!")
     }
 }
