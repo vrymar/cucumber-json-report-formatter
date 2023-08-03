@@ -21,3 +21,8 @@ const sourceFile = "./cucumber-messages.ndjson"
 const outputFile = "./reports/cucumber-report.json"
 await formatter.parseCucumberJson(sourceFile, outputFile)
 ```
+
+## Test
+```
+npm run test
+```
