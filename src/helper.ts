@@ -11,7 +11,7 @@ export class Helper {
         })
 
         for await (const line of readLine) {
-            result.push(await this.parseJson(line))         
+            result.push(await this.parseJson(line))
         }
         return result
     }
@@ -21,17 +21,17 @@ export class Helper {
             console.info(`Write to the file: ${filePath}`)
             fs.writeFileSync(filePath, content, {flag: 'w+'})
         } catch (err) {
-            console.error(`Failed to write the file: ${filePath}`)
+            console.error(`Failed to write the file: ${filePath}`, err)
         }
     }
 
-    public async parseJson(data){        
+    public async parseJson(data){
         try {
             const jsonString = JSON.stringify(data)
-            return JSON.parse(jsonString)          
+            return JSON.parse(jsonString)
         } catch (err) {
             console.error("Error parsing JSON string:", err)
-        }        
+        }
     }
 
     public getJsonFromArray(arrayJsonFile, startWord){

@@ -57,24 +57,21 @@ export class Formatter {
         this.helper.writeFile(outputFile, reportString)
     }
 
-    private buildAndAddScenario(child, report: string[], background: {}, feature, scenariosJson: any[], rule) {
-        let steps = [];
-        let stepJson = {};
+    private buildAndAddScenario(child, report: string[], background: Record<string, unknown>, feature, scenariosJson: any[], rule) {
+        let steps: any[] = [];
+        let stepJson: any = {};
         // Background
         if (child.scenario === undefined) {
             child.background.steps.forEach(step => {
                 stepJson = this.createStepJson(step, report, 0);
-                // @ts-ignore
                 steps.push(stepJson);
             });
             background = this.createScenarioJson(feature, child.background, steps, "background");
-            // eslint-disable-next-line brace-style
         }
         // Normal Scenario
         else if (!child.scenario.keyword.includes("Outline")) {
             child.scenario.steps.forEach(step => {
                 stepJson = this.createStepJson(step, report, 0);
-                // @ts-ignore
                 steps.push(stepJson);
             });
             const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario");
@@ -82,10 +79,8 @@ export class Formatter {
                 scenario.id = `${feature.name};${rule.name};${scenario.name}`;
             }
             if (Object.keys(background).length !== 0 && background !== undefined) {
-                // @ts-ignore
                 scenariosJson.push(background);
             }
-            // @ts-ignore
             scenariosJson.push(scenario);
         }
         // Scenario Outline
@@ -99,7 +94,6 @@ export class Formatter {
                 while (currentStep < numberOfStepsEachExecution) {
                     stepJson = this.createStepJson(child.scenario.steps[currentStep], report, scenarioIndex);
                     currentStep++;
-                    // @ts-ignore
                     steps.push(stepJson);
                 }
                 const scenario = this.createScenarioJson(feature, child.scenario, steps, "scenario", scenarioIndex);
@@ -107,10 +101,8 @@ export class Formatter {
                     scenario.id = `${feature.name};${rule.name};${scenario.name}`;
                 }
                 if (Object.keys(background).length !== 0 && background !== undefined) {
-                    // @ts-ignore
                     scenariosJson.push(background);
                 }
-                // @ts-ignore
                 scenariosJson.push(scenario);
                 scenarioIndex++;
             }
@@ -413,3 +405,4 @@ export class Formatter {
         console.info("Cucumber report JSON schema validation passed!")
     }
 }
+
