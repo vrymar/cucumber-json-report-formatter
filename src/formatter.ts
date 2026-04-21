@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Helper } from './helper'
 import jsonschema from 'jsonschema'
-import assert from 'assert'
+import { strict as assert } from 'node:assert'
 
 
 export class Formatter {

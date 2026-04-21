@@ -16,7 +16,7 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "jsx": "react-jsx"
+    "types": ["jest", "node"]
   },
   "include": [
     "tests"

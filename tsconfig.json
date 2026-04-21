@@ -1,19 +1,20 @@
 {
   "compilerOptions": {
+    "rootDir": "./src",
     "outDir": "lib",
     "declaration": true,
     "noImplicitAny": false,
     "strictNullChecks": true,
     "strict": true,
-    "target": "es2020",
+    "target": "esnext",
     "module": "CommonJS",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "lib": [
-			"es2020"
+			"esnext"
 		],
-    "jsx": "react",
+    "types": ["node", "jest"],
     "pretty": true,
     "stripInternal": true,
 		"newLine": "lf",
