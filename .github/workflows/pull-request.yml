@@ -6,6 +6,7 @@ on:
       - master
     types:
       - opened
+      - synchronize
 
 permissions:
   contents: read
@@ -57,3 +58,4 @@ jobs:
         run: npm publish --registry https://npm.pkg.github.com --tag pr-${{ github.event.pull_request.number }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
