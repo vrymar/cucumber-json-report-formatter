@@ -3,9 +3,8 @@
  * https://jestjs.io/docs/configuration
  */
 
-import type {Config} from 'jest';
-
-const config: Config = {
+/** @type {import('jest').Config} */
+const config = {
   clearMocks: true,
   coverageProvider: "v8",
   transform: {
@@ -14,4 +13,4 @@ const config: Config = {
   moduleFileExtensions: ['ts', 'js'],
 };
 
-export default config;
+module.exports = config;
