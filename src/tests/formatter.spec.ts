@@ -82,3 +82,19 @@ test("formatter - normalizes step result status to lowercase", async () => {
     expect(step.result.status).toBe(step.result.status.toLowerCase());
   });
 });
+
+test("formatter - prepends background steps to every scenario", async () => {
+  const scenarios = JSONResult[0].elements.filter(
+    (element) => element.type === "scenario"
+  );
+
+  expect(scenarios.length).toBeGreaterThan(0);
+  scenarios.forEach((scenario) => {
+    expect(scenario.steps[0]).toEqual(
+      expect.objectContaining({
+        keyword: "Given ",
+        name: 'I visit path "https://e2e-test-quest.github.io/weather-app/"',
+      })
+    );
+  });
+});

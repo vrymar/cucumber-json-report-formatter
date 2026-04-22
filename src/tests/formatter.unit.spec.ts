@@ -68,6 +68,41 @@ describe("Formatter utility methods", () => {
     });
   });
 
+  test("getStepResult resolves status when testStepId differs from pickleStepId", () => {
+    const report = [
+      JSON.stringify({
+        pickle: {
+          id: "pickle-case-1",
+          steps: [{ id: "pickle-step-1", astNodeIds: ["ast-step-1"] }],
+        },
+      }),
+      JSON.stringify({
+        testCase: {
+          id: "case-1",
+          pickleId: "pickle-case-1",
+          testSteps: [{ id: "test-step-1", pickleStepId: "pickle-step-1" }],
+        },
+      }),
+      JSON.stringify({
+        testStepFinished: {
+          testStepId: "test-step-1",
+          testStepResult: {
+            duration: { seconds: 0, nanos: 1500 },
+            status: "PASSED",
+          },
+        },
+      }),
+    ];
+
+    const result = formatter.getStepResult("ast-step-1", report, 0);
+
+    expect(result).toEqual({
+      status: "passed",
+      duration: 1500,
+      error_message: undefined,
+    });
+  });
+
   test("getComments returns mapped comments with line and value", () => {
     const comments = formatter.getComments([
       { location: { line: 7 }, text: "first comment" },
