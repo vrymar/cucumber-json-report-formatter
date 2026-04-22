@@ -1,0 +1,61 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - synchronize
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-and-publish-pr-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: '@vrymar'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run tests
+        run: npm test -- --runInBand
+
+      - name: Prepare PR package metadata
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_version=$(node -p "require('./package.json').version")
+          pr_number="${{ github.event.pull_request.number }}"
+          run_number="${{ github.run_number }}"
+          run_attempt="${{ github.run_attempt }}"
+          pr_version="${base_version}-pr.${pr_number}.${run_number}.${run_attempt}"
+
+          npm version "$pr_version" --no-git-tag-version
+          npm pkg set name='@vrymar/cucumber-json-report-formatter'
+
+      - name: Publish PR package to GitHub Packages
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: npm publish --registry https://npm.pkg.github.com --tag pr-${{ github.event.pull_request.number }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

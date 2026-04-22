@@ -1,0 +1,193 @@
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: Version increment type (ignored if explicit_tag is set)
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      explicit_tag:
+        description: Explicit tag to create (format vX.Y.Z)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+
+jobs:
+  create-tag-release-and-package:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Calculate next tag
+        id: next_tag
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          INPUT_BUMP_TYPE: ${{ github.event.inputs.bump_type }}
+          INPUT_EXPLICIT_TAG: ${{ github.event.inputs.explicit_tag }}
+        run: |
+          set -euo pipefail
+
+          last_tag="$(git tag --list 'v*' --sort=-version:refname | head -n 1)"
+          explicit_tag="${INPUT_EXPLICIT_TAG:-}"
+
+          if [[ -n "$explicit_tag" ]]; then
+            if [[ ! "$explicit_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Explicit tag '$explicit_tag' must match vX.Y.Z."
+              exit 1
+            fi
+            next_tag="$explicit_tag"
+            bump_type="explicit"
+          else
+            if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+              bump_type="${INPUT_BUMP_TYPE:-patch}"
+            else
+              labels_lower=",${PR_LABELS,,},"
+              bump_type="patch"
+
+              if [[ "$labels_lower" == *",major,"* ]]; then
+                bump_type="major"
+              elif [[ "$labels_lower" == *",minor,"* ]]; then
+                bump_type="minor"
+              fi
+            fi
+
+            if [[ -z "$last_tag" ]]; then
+              major=0
+              minor=0
+              patch=0
+            else
+              version="${last_tag#v}"
+              IFS='.' read -r major minor patch <<< "$version"
+
+              if [[ -z "${major:-}" || -z "${minor:-}" || -z "${patch:-}" ]]; then
+                echo "Latest tag '$last_tag' is not in vX.Y.Z format."
+                exit 1
+              fi
+            fi
+
+            case "$bump_type" in
+              major)
+                major=$((major + 1))
+                minor=0
+                patch=0
+                ;;
+              minor)
+                minor=$((minor + 1))
+                patch=0
+                ;;
+              patch)
+                patch=$((patch + 1))
+                ;;
+              *)
+                echo "Unsupported bump_type '$bump_type'."
+                exit 1
+                ;;
+            esac
+
+            next_tag="v${major}.${minor}.${patch}"
+          fi
+
+          echo "tag=$next_tag" >> "$GITHUB_OUTPUT"
+          echo "version=${next_tag#v}" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=$last_tag" >> "$GITHUB_OUTPUT"
+          echo "bump_type=$bump_type" >> "$GITHUB_OUTPUT"
+          echo "Next tag: $next_tag"
+          echo "Bump type: $bump_type"
+
+      - name: Create and push tag
+        run: |
+          git tag "${{ steps.next_tag.outputs.tag }}"
+          git push origin "${{ steps.next_tag.outputs.tag }}"
+
+      - name: Generate release notes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          next_tag="${{ steps.next_tag.outputs.tag }}"
+          previous_tag="${{ steps.next_tag.outputs.previous_tag }}"
+          bump_type="${{ steps.next_tag.outputs.bump_type }}"
+
+          {
+            echo "## Release $next_tag"
+            echo
+            if [[ "$EVENT_NAME" == "pull_request" && -n "${PR_NUMBER:-}" ]]; then
+              echo "Automated release for merged PR #${PR_NUMBER}."
+            else
+              echo "Automated release from manual workflow dispatch."
+            fi
+            echo "Version bump: $bump_type"
+            echo
+            echo "### Changelog"
+
+            if [[ -z "$previous_tag" ]]; then
+              git log --pretty=format:'- %s (%h)' -n 20 || true
+            else
+              git log --pretty=format:'- %s (%h)' "$previous_tag"..HEAD || true
+            fi
+          } > release-notes.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.next_tag.outputs.tag }}" \
+            --title "${{ steps.next_tag.outputs.tag }}" \
+            --notes-file release-notes.md
+
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: '@vrymar'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set package version from tag
+        run: npm version "${{ steps.next_tag.outputs.version }}" --no-git-tag-version
+
+      - name: Build package
+        run: npm run build
+
+      - name: Prepare scoped package name for GitHub Packages
+        run: npm pkg set name='@vrymar/cucumber-json-report-formatter'
+
+      - name: Publish package to GitHub Packages
+        run: npm publish --registry https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
