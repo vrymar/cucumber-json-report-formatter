@@ -25,6 +25,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 concurrency:
   group: release-master
@@ -32,7 +33,10 @@ concurrency:
 
 jobs:
   create-tag-release-and-package:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+      !startsWith(github.event.pull_request.head.ref, 'release-metadata/'))
     runs-on: ubuntu-latest
 
     steps:
@@ -138,16 +142,38 @@ jobs:
         run: npm version "${{ steps.next_tag.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Commit package version
+        id: version_commit
         shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.next_tag.outputs.tag }}
         run: |
           git add package.json package-lock.json
 
           if git diff --cached --quiet; then
             echo "Package version is already ${{ steps.next_tag.outputs.version }}."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m "chore(release): ${{ steps.next_tag.outputs.tag }}"
-            git push origin HEAD:master
+            release_branch="release-metadata/${RELEASE_TAG}"
+            git switch -c "$release_branch"
+            git commit -m "chore(release): ${RELEASE_TAG}"
+            git push origin "$release_branch"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "branch=$release_branch" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Open package version pull request
+        if: steps.version_commit.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_BRANCH: ${{ steps.version_commit.outputs.branch }}
+          RELEASE_TAG: ${{ steps.next_tag.outputs.tag }}
+        run: |
+          gh pr create \
+            --base master \
+            --head "$RELEASE_BRANCH" \
+            --title "chore(release): $RELEASE_TAG" \
+            --body "Synchronize package metadata with $RELEASE_TAG. This PR was generated automatically because master is protected. Merging it will not create another release."
 
       - name: Create and push tag
         run: |
