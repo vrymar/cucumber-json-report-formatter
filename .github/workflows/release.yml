@@ -124,6 +124,31 @@ jobs:
           echo "Next tag: $next_tag"
           echo "Bump type: $bump_type"
 
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: '@vrymar'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set package version from tag
+        run: npm version "${{ steps.next_tag.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Commit package version
+        shell: bash
+        run: |
+          git add package.json package-lock.json
+
+          if git diff --cached --quiet; then
+            echo "Package version is already ${{ steps.next_tag.outputs.version }}."
+          else
+            git commit -m "chore(release): ${{ steps.next_tag.outputs.tag }}"
+            git push origin HEAD:master
+          fi
+
       - name: Create and push tag
         run: |
           git tag "${{ steps.next_tag.outputs.tag }}"
@@ -167,19 +192,6 @@ jobs:
           gh release create "${{ steps.next_tag.outputs.tag }}" \
             --title "${{ steps.next_tag.outputs.tag }}" \
             --notes-file release-notes.md
-
-      - name: Setup Node.js for GitHub Packages
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          registry-url: https://npm.pkg.github.com
-          scope: '@vrymar'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set package version from tag
-        run: npm version "${{ steps.next_tag.outputs.version }}" --no-git-tag-version
 
       - name: Build package
         run: npm run build
