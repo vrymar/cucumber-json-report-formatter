@@ -141,43 +141,48 @@ jobs:
       - name: Set package version from tag
         run: npm version "${{ steps.next_tag.outputs.version }}" --no-git-tag-version --allow-same-version
 
-      - name: Commit package version
+      - name: Prepare release and next version
         id: version_commit
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.next_tag.outputs.tag }}
         run: |
+          release_branch="release-metadata/${RELEASE_TAG}"
+          git switch -c "$release_branch"
           git add package.json package-lock.json
 
-          if git diff --cached --quiet; then
-            echo "Package version is already ${{ steps.next_tag.outputs.version }}."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            release_branch="release-metadata/${RELEASE_TAG}"
-            git switch -c "$release_branch"
+          if ! git diff --cached --quiet; then
             git commit -m "chore(release): ${RELEASE_TAG}"
-            git push origin "$release_branch"
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "branch=$release_branch" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Open package version pull request
-        if: steps.version_commit.outputs.changed == 'true'
+          release_commit="$(git rev-parse HEAD)"
+          npm version patch --no-git-tag-version
+          next_version="$(node --print "require('./package.json').version")"
+          git add package.json package-lock.json
+          git commit -m "chore: prepare v${next_version}"
+          git push origin "$release_branch"
+
+          echo "branch=$release_branch" >> "$GITHUB_OUTPUT"
+          echo "release_commit=$release_commit" >> "$GITHUB_OUTPUT"
+          echo "next_version=$next_version" >> "$GITHUB_OUTPUT"
+
+      - name: Open next version pull request
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_BRANCH: ${{ steps.version_commit.outputs.branch }}
           RELEASE_TAG: ${{ steps.next_tag.outputs.tag }}
+          NEXT_VERSION: ${{ steps.version_commit.outputs.next_version }}
         run: |
           gh pr create \
             --base master \
             --head "$RELEASE_BRANCH" \
-            --title "chore(release): $RELEASE_TAG" \
-            --body "Synchronize package metadata with $RELEASE_TAG. This PR was generated automatically because master is protected. Merging it will not create another release."
+            --title "chore: prepare v$NEXT_VERSION" \
+            --body "Prepare package metadata for v$NEXT_VERSION after releasing $RELEASE_TAG. This PR was generated automatically because master is protected. Merging it will not create another release."
 
       - name: Create and push tag
         run: |
-          git tag "${{ steps.next_tag.outputs.tag }}"
+          git tag "${{ steps.next_tag.outputs.tag }}" "${{ steps.version_commit.outputs.release_commit }}"
           git push origin "${{ steps.next_tag.outputs.tag }}"
 
       - name: Generate release notes
@@ -191,6 +196,7 @@ jobs:
           next_tag="${{ steps.next_tag.outputs.tag }}"
           previous_tag="${{ steps.next_tag.outputs.previous_tag }}"
           bump_type="${{ steps.next_tag.outputs.bump_type }}"
+          release_commit="${{ steps.version_commit.outputs.release_commit }}"
 
           {
             echo "## Release $next_tag"
@@ -205,9 +211,9 @@ jobs:
             echo "### Changelog"
 
             if [[ -z "$previous_tag" ]]; then
-              git log --pretty=format:'- %s (%h)' -n 20 || true
+              git log --pretty=format:'- %s (%h)' -n 20 "$release_commit" || true
             else
-              git log --pretty=format:'- %s (%h)' "$previous_tag"..HEAD || true
+              git log --pretty=format:'- %s (%h)' "$previous_tag".."$release_commit" || true
             fi
           } > release-notes.md
 
@@ -218,6 +224,9 @@ jobs:
           gh release create "${{ steps.next_tag.outputs.tag }}" \
             --title "${{ steps.next_tag.outputs.tag }}" \
             --notes-file release-notes.md
+
+      - name: Checkout release commit
+        run: git checkout --detach "${{ steps.version_commit.outputs.release_commit }}"
 
       - name: Build package
         run: npm run build
