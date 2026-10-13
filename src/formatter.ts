@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Helper } from './helper'
 import jsonschema from 'jsonschema'
 import { strict as assert } from 'node:assert'
@@ -176,7 +175,7 @@ export class Formatter {
     }
 
     getStepText(stepId, report, ignoreAmount){
-        if (typeof report === undefined) {
+        if (report === undefined) {
             console.error("Source report is undefined")
             return
         }
@@ -200,7 +199,7 @@ export class Formatter {
 
 
     getStepResult(stepId, report, ignoreAmount){
-        if (typeof report === undefined){
+        if (report === undefined){
             console.error("Source report is undefined")
             return
         }
@@ -214,7 +213,7 @@ export class Formatter {
     }
 
     matchStepDefinitions(stepId, report, ignoreAmount){
-        if (typeof report === undefined){
+        if (report === undefined){
             console.error("Source report is undefined")
             return
         }
@@ -332,7 +331,7 @@ export class Formatter {
     }
 
     getStepAttachments(stepId, report, ignoreAmount){
-        if (typeof report === undefined){
+        if (report === undefined){
             console.error("Source report is undefined")
             return
         }
