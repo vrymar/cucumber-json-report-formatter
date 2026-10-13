@@ -1,19 +1,20 @@
 {
   "compilerOptions": {
+    "rootDir": "./src",
     "outDir": "lib",
+    "types": ["node"],
     "declaration": true,
     "noImplicitAny": false,
     "strictNullChecks": true,
     "strict": true,
-    "target": "es2020",
+    "target": "esnext",
     "module": "CommonJS",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "lib": [
-			"es2020"
+			"esnext"
 		],
-    "jsx": "react",
     "pretty": true,
     "stripInternal": true,
 		"newLine": "lf",
@@ -24,6 +25,7 @@
     "./src/**/*.json"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/tests"
   ]
 }
